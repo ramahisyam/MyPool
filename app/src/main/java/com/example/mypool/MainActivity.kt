@@ -1,14 +1,18 @@
 package com.example.mypool
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.ContentValues.TAG
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.cardview.widget.CardView
+import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.database.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -25,6 +29,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var phCard: CardView
     private lateinit var turbidityCard: CardView
     private lateinit var feedingCard: CardView
+    private lateinit var outputFuzzy: TextView
+
+    private var phNetral: String = "Netral"
+    private var phAsam: String = "Asam"
+    private var phBasa: String = "Basa"
+
+    private var turbidityNormal: String = "Normal"
+    private var turbidityKeruh: String = "Keruh"
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -37,6 +49,7 @@ class MainActivity : AppCompatActivity() {
         phCard = findViewById(R.id.card_ph)
         turbidityCard = findViewById(R.id.card_turbidity)
         feedingCard = findViewById(R.id.card_feeding)
+        outputFuzzy = findViewById(R.id.notif)
 
         database = FirebaseDatabase.getInstance()
         dbRef = database.reference.child("Data")
@@ -57,34 +70,46 @@ class MainActivity : AppCompatActivity() {
 
                     phProgressBar.progress = dataPH.toFloat().toInt()
                     if (dataPH.toFloat() <= 5.0) {
-                        phStatus.text = "Low"
+                        phStatus.text = phAsam
                         phStatus.setTextColor(Color.parseColor("#FEDB39"))
                     } else if (dataPH.toFloat() in 5.1..8.0) {
-                        phStatus.text = "Normal"
+                        phStatus.text = phNetral
                         phStatus.setTextColor(Color.parseColor("#1CD6CE"))
                     } else if (dataPH.toFloat() in 8.1..14.0) {
-                        phStatus.text = "High"
+                        phStatus.text = phBasa
                         phStatus.setTextColor(Color.parseColor("#D61C4E"))
                     }
 
                     turbidityProgressBar.progress = dataTurbidity.toFloat().toInt()
                     if (dataTurbidity.toFloat().toInt() in 0..50) {
-                        turbidityStatus.text = "Normal"
+                        turbidityStatus.text = turbidityNormal
                         turbidityStatus.setTextColor(Color.parseColor("#1CD6CE"))
                     } else if (dataTurbidity.toFloat().toInt() in 51..100) {
-                        turbidityStatus.text = "Warning"
+                        turbidityStatus.text = turbidityKeruh
                         turbidityStatus.setTextColor(Color.parseColor("#FEDB39"))
                     } else if (dataTurbidity.toFloat().toInt() > 100) {
                         turbidityStatus.text = "Danger"
                         turbidityStatus.setTextColor(Color.parseColor("#D61C4E"))
                     }
+                    val future = System.currentTimeMillis()
+                    val timer = future - past
+                    val durationString: Duration = timer.milliseconds
+                    Log.d(TAG, "$durationString = onDataChange: $timer")
                 }
 
-                val future = System.currentTimeMillis()
-                val timer = future - past
-                val durationString: Duration = timer.milliseconds
-
-                Log.d(TAG, "onDataChange: $durationString")
+                if (phStatus.text == phAsam && turbidityStatus.text == turbidityNormal){
+                    outputFuzzy.text = "Kadar PH Menurun, disarankan untuk menambahkan kapur agar PH netral"
+                } else if (phStatus.text == phNetral && turbidityStatus.text == turbidityNormal){
+                    outputFuzzy.text = "Kondisi air kolam masih aman"
+                } else if (phStatus.text == phBasa && turbidityStatus.text == turbidityNormal){
+                    outputFuzzy.text = "Kadar PH naik, disarankan untuk mengganti air kolam"
+                } else if (phStatus.text == phAsam && turbidityStatus.text == turbidityKeruh){
+                    outputFuzzy.text = "Kadar PH menurun dan Air kolam Keruh, disarankan untuk mengganti air kolam"
+                } else if (phStatus.text == phNetral && turbidityStatus.text == turbidityKeruh){
+                    outputFuzzy.text = "Kadar PH netral namun Air kolam Keruh, disarankan untuk mengganti air kolam"
+                } else if (phStatus.text == phBasa && turbidityStatus.text == turbidityKeruh){
+                    outputFuzzy.text = "Kadar PH naik dan Air kolam Keruh, disarankan untuk mengganti air kolam"
+                }
 
             }
 
